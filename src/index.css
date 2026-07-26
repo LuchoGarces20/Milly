@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@theme {
+  --color-slate-950: #0B0F19; /* Fintech Midnight Violet/Dark */
+}
+
+@layer base {
+  body {
+    @apply antialiased bg-slate-50 text-slate-900 transition-colors duration-500;
+  }
+  
+  .dark body {
+    @apply bg-[#0B0F19] text-slate-100;
+  }
+
+  /* Suavização na rolagem */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 dark:bg-white/10 rounded-full;
+  }
+}
