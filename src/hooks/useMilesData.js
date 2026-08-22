@@ -27,7 +27,26 @@ export function useMilesData() {
       let totalSaidas = 0;
 
       allTxs.forEach(t => {
-        if (t.type === 'Entrada') {
+        // MÁGICA DA OPÇÃO 2: Snapshot / Sobrescrita
+        if (t.isSnapshot) {
+          // Calcula quanto falta (ou sobra) para o saldo bater exatamente com o que o usuário declarou
+          const diferenca = Number(t.amount) - balance;
+          
+          balance = Number(t.amount); // Força o saldo a ser a "verdade absoluta"
+          totalInvestment += Number(t.investment || 0);
+
+          if (diferenca > 0) {
+            // Se faltou ponto (ex: declarou 50k, mas clubes do passado só deram 10k), joga a diferença no FIFO
+            if (t.expirationDate && !t.neverExpires) {
+              entradas.push({ amount: diferenca, date: t.expirationDate });
+            }
+          } else if (diferenca < 0) {
+            // Se o clube gerou MAIS do que ele tem hoje (provavelmente ele gastou e não lançou), abate a diferença
+            totalSaidas += Math.abs(diferenca);
+          }
+        } 
+        // Fluxo Normal (Não-Snapshot)
+        else if (t.type === 'Entrada') {
           balance += Number(t.amount);
           totalInvestment += Number(t.investment || 0);
           if (t.expirationDate && !t.neverExpires) {
@@ -43,6 +62,7 @@ export function useMilesData() {
       const marketCpm = Number(prog.marketCpm || 0);
       const marketValue = (balance / 1000) * marketCpm;
       const profit = marketValue - (cpm * (balance / 1000));
+
       let expirationsAtivas = [];
       const isExemptByClub = prog.hasClub && prog.pointsNeverExpireWithClub && (!prog.clubEndDate || new Date(prog.clubEndDate) >= new Date());
 
@@ -57,7 +77,7 @@ export function useMilesData() {
                date: expDate.toISOString().split('T')[0],
                program: prog.name,
                owner: prog.owner,
-              isActivityDeadline: true
+               isActivityDeadline: true
             }];
           }
         } else {
@@ -95,7 +115,6 @@ export function useMilesData() {
     const globalProfit = totalMarketValue - totalInvestment;
     
     const clubCost = dashboardStats.filter(p => p.hasClub && (!p.clubEndDate || new Date(p.clubEndDate) >= new Date())).reduce((acc, curr) => acc + Number(curr.clubCost || 0), 0);
-
     return { totalInvestment, totalMarketValue, globalProfit, clubCost, weightedCpm };
   }, [dashboardStats]);
 

@@ -1,18 +1,19 @@
 import React from 'react';
-import { ArrowLeft, Pencil, Trash2, Plus, TrendingUp, Zap, ShieldCheck, Orbit, Activity, Ghost, ArrowUpRight, ArrowDownRight, Radar, AlertTriangle, CheckCircle2, Clock, Medal } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2, Plus, TrendingUp, Zap, ShieldCheck, Orbit, Activity, Ghost, ArrowUpRight, ArrowDownRight, Radar, AlertTriangle, CheckCircle2, Clock, Medal, Target } from 'lucide-react';
 import { formatCurrency, formatNumber, formatDateBR, getCategoryIcon } from '../../utils/helpers';
 import { CATALOGO_PROGRAMAS } from '../../constants/milesConfig';
 
 export default function ProgramView({ programId, milesData, onBack, onOpenProgModal, onOpenTxModal }) {
   const { statsPorPrograma, profiles, deleteProgram, deleteTx } = milesData;
-  const progDetails = statsPorPrograma.find(p => p.id === programId);
 
+  const progDetails = statsPorPrograma.find(p => p.id === programId);
   if (!progDetails) {
     onBack();
     return null;
   }
 
   const progTxs = [...progDetails.allTxs].sort((a, b) => new Date(b.date) - new Date(a.date));
+  
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
 
@@ -32,10 +33,10 @@ export default function ProgramView({ programId, milesData, onBack, onOpenProgMo
     }
   };
 
-  // Lógica de Quarentena
   let quarantineDaysLeft = 0;
   let quarantineDate = null;
   const catalogInfo = CATALOGO_PROGRAMAS.find(c => c.name === progDetails.name);
+
   if (!progDetails.hasClub && progDetails.lastCancellationDate && catalogInfo?.quarantineMonths > 0) {
      const cancelDate = new Date(progDetails.lastCancellationDate + 'T00:00:00');
      cancelDate.setMonth(cancelDate.getMonth() + catalogInfo.quarantineMonths);
@@ -95,7 +96,7 @@ export default function ProgramView({ programId, milesData, onBack, onOpenProgMo
            </div>
            <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">{progDetails.name}</h2>
          </div>
-
+         
          <div className="flex flex-wrap gap-4 relative z-10">
            {progDetails.hasClub && progDetails.clubTier && (
              <div className="bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 px-4 py-3 rounded-2xl flex items-center gap-3">
@@ -173,6 +174,7 @@ export default function ProgramView({ programId, milesData, onBack, onOpenProgMo
             <Activity className="w-5 h-5 text-violet-500" />
             <h3 className="font-extrabold text-slate-800 dark:text-white text-lg">Extrato de Transações</h3>
           </div>
+          
           <div className="p-6 overflow-y-auto max-h-[500px] space-y-3">
             {progTxs.length === 0 ? (
               <div className="text-center py-10">
@@ -185,10 +187,12 @@ export default function ProgramView({ programId, milesData, onBack, onOpenProgMo
                   <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${
                       tx.type === 'Entrada' 
-                        ? (tx.isAuto ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400' : 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400')
+                         ? (tx.isSnapshot ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400' 
+                          : tx.isAuto ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400' 
+                          : 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400')
                         : 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400'
                     }`}>
-                      {tx.type === 'Entrada' ? (tx.isAuto ? <Zap className="w-5 h-5"/> : <ArrowUpRight className="w-6 h-6" />) : <ArrowDownRight className="w-6 h-6" />}
+                      {tx.type === 'Entrada' ? (tx.isSnapshot ? <Target className="w-5 h-5"/> : tx.isAuto ? <Zap className="w-5 h-5"/> : <ArrowUpRight className="w-6 h-6" />) : <ArrowDownRight className="w-6 h-6" />}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -196,6 +200,7 @@ export default function ProgramView({ programId, milesData, onBack, onOpenProgMo
                           {tx.type === 'Entrada' ? '+' : '-'}{formatNumber(tx.amount)}
                         </p>
                         {tx.isAuto && <span className="text-[10px] uppercase tracking-wider font-bold bg-violet-200 dark:bg-violet-500/30 text-violet-800 dark:text-violet-300 px-2 py-0.5 rounded-full">Automático</span>}
+                        {tx.isSnapshot && <span className="text-[10px] uppercase tracking-wider font-bold bg-blue-200 dark:bg-blue-500/30 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full">Marco Zero</span>}
                       </div>
                       <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">
                         {formatDateBR(tx.date)} {tx.description ? ` - ${tx.description}` : ''} {tx.type === 'Entrada' && tx.investment > 0 && `| Pago: ${formatCurrency(tx.investment)}`}
@@ -221,6 +226,7 @@ export default function ProgramView({ programId, milesData, onBack, onOpenProgMo
             <Radar className="w-5 h-5 text-amber-500" />
             <h3 className="font-extrabold text-slate-800 dark:text-white text-lg">Validade (Próx. 12 meses)</h3>
           </div>
+          
           <div className="p-6 overflow-y-auto max-h-[500px] space-y-4">
             {progDetails.isExemptByClub && (
               <div className="text-center py-6 px-4 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-2xl">
@@ -259,6 +265,7 @@ export default function ProgramView({ programId, milesData, onBack, onOpenProgMo
                 </div>
               </div>
             ))}
+
             {!progDetails.isExemptByClub && alertasPrograma.length === 0 && (
               <div className="text-center py-6">
                 <CheckCircle2 className="w-10 h-10 text-emerald-500/50 mx-auto mb-2" />

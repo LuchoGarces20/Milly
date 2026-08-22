@@ -4,13 +4,11 @@ import { CATALOGO_PROGRAMAS, INITIAL_PROG_FORM } from '../../constants/milesConf
 
 export default function OnboardingView({ milesData, onComplete }) {
   const { isDarkMode, setIsDarkMode, setProfiles, programas, setProgramas, transacoes, setTransacoes } = milesData;
-
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState(null);
   const [names, setNames] = useState(['']);
   const [initialSetups, setInitialSetups] = useState([]);
 
-  // Passo 1: Nomes
   const handleModeSelect = (selectedMode) => {
     setMode(selectedMode);
     if (selectedMode === 'single') setNames(['']);
@@ -33,7 +31,6 @@ export default function OnboardingView({ milesData, onComplete }) {
     }
   };
 
-  // Passo 2: Programas Interativos
   const toggleProgramSetup = (catalogItem) => {
     const exists = initialSetups.find(s => s.catalog.id === catalogItem.id);
     if (exists) {
@@ -56,12 +53,11 @@ export default function OnboardingView({ milesData, onComplete }) {
 
   const submitStep2 = (e) => {
     e?.preventDefault();
-
     if (initialSetups.length > 0) {
       const newPrograms = [];
       const newTxs = [];
       const timestamp = Date.now();
-
+      
       initialSetups.forEach((setup, i) => {
         const progId = `p_${timestamp}_${i}`;
         newPrograms.push({
@@ -74,11 +70,10 @@ export default function OnboardingView({ milesData, onComplete }) {
           owner: setup.owner,
           marketCpm: Number(setup.marketCpm || 0)
         });
-
+        
         if (Number(setup.balance) > 0) {
           const exp = new Date();
           exp.setFullYear(exp.getFullYear() + 2);
-
           newTxs.push({
             id: `tx_${timestamp}_${i}`,
             programId: progId,
@@ -88,15 +83,15 @@ export default function OnboardingView({ milesData, onComplete }) {
             investment: Number(setup.investment || 0),
             date: new Date().toISOString().split('T')[0],
             expirationDate: exp.toISOString().split('T')[0],
-            isAuto: false
+            isAuto: false,
+            isSnapshot: true, // <-- FLAG ADICIONADA: Diz pro sistema que este valor é a verdade absoluta
+            description: 'Saldo Inicial (Marco Zero)'
           });
         }
       });
-
       setProgramas([...programas, ...newPrograms]);
       setTransacoes([...transacoes, ...newTxs]);
     }
-
     onComplete();
   };
 
@@ -107,7 +102,6 @@ export default function OnboardingView({ milesData, onComplete }) {
           {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
       </div>
-
       <div className="relative w-full max-w-2xl">
         <div className="bg-white/80 dark:bg-[#0B0F19]/80 backdrop-blur-2xl w-full rounded-[2.5rem] shadow-2xl p-8 border border-slate-200 dark:border-white/10 relative z-10">
           <div className="flex justify-center mb-8">
@@ -117,8 +111,7 @@ export default function OnboardingView({ milesData, onComplete }) {
           </div>
           
           <h1 className="text-3xl font-extrabold text-center mb-2 tracking-tight">Bem-vindo à Milly</h1>
-
-          {/* PASSO 1: TITULARES */}
+          
           {step === 1 && (
             <div className="animate-in slide-in-from-left-4 duration-300">
               {!mode ? (
@@ -183,7 +176,6 @@ export default function OnboardingView({ milesData, onComplete }) {
             </div>
           )}
 
-          {/* PASSO 2: SETUP INTELIGENTE DE CARDS */}
           {step === 2 && (
             <div className="animate-in slide-in-from-right-4 duration-300">
               <p className="text-center text-slate-500 dark:text-slate-400 mb-6 font-medium">Selecione os programas que você utiliza hoje:</p>
@@ -225,7 +217,8 @@ export default function OnboardingView({ milesData, onComplete }) {
                       </div>
                       <div className="grid grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">Saldo Inicial</label>
+                          {/* Label alterada para ficar mais clara e amigável */}
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">Saldo Total Hoje</label>
                           <input type="number" placeholder="0" value={setup.balance} onChange={(e) => updateSetup(setup.id, 'balance', e.target.value)} className="w-full bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm font-mono font-bold outline-none focus:border-violet-500 dark:text-white" />
                         </div>
                         <div>
