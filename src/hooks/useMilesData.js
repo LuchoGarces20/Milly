@@ -4,10 +4,17 @@ import { getAutoClubTxs } from '../utils/clubEngine';
 
 export function useMilesData() {
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [profiles, setProfiles] = useState([]);
+  const [profiles, setProfiles] = useState([]); // Agora suportará [{ id: 'uuid', name: 'João' }]
   const [activeTab, setActiveTab] = useState('Todos');
   const [programas, setProgramas] = useState([]);
   const [transacoes, setTransacoes] = useState([]);
+  
+  // NOVO: Sistema de Toasts
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+  const showToast = (message, type = 'success') => {
+    setToast({ visible: true, message, type });
+    setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 3000);
+  };
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -27,26 +34,18 @@ export function useMilesData() {
       let totalSaidas = 0;
 
       allTxs.forEach(t => {
-        // MÁGICA DA OPÇÃO 2: Snapshot / Sobrescrita
         if (t.isSnapshot) {
-          // Calcula quanto falta (ou sobra) para o saldo bater exatamente com o que o usuário declarou
           const diferenca = Number(t.amount) - balance;
-          
-          balance = Number(t.amount); // Força o saldo a ser a "verdade absoluta"
+          balance = Number(t.amount); 
           totalInvestment += Number(t.investment || 0);
-
           if (diferenca > 0) {
-            // Se faltou ponto (ex: declarou 50k, mas clubes do passado só deram 10k), joga a diferença no FIFO
             if (t.expirationDate && !t.neverExpires) {
               entradas.push({ amount: diferenca, date: t.expirationDate });
             }
           } else if (diferenca < 0) {
-            // Se o clube gerou MAIS do que ele tem hoje (provavelmente ele gastou e não lançou), abate a diferença
             totalSaidas += Math.abs(diferenca);
           }
-        } 
-        // Fluxo Normal (Não-Snapshot)
-        else if (t.type === 'Entrada') {
+        } else if (t.type === 'Entrada') {
           balance += Number(t.amount);
           totalInvestment += Number(t.investment || 0);
           if (t.expirationDate && !t.neverExpires) {
@@ -62,7 +61,6 @@ export function useMilesData() {
       const marketCpm = Number(prog.marketCpm || 0);
       const marketValue = (balance / 1000) * marketCpm;
       const profit = marketValue - (cpm * (balance / 1000));
-
       let expirationsAtivas = [];
       const isExemptByClub = prog.hasClub && prog.pointsNeverExpireWithClub && (!prog.clubEndDate || new Date(prog.clubEndDate) >= new Date());
 
@@ -72,13 +70,7 @@ export function useMilesData() {
             const latestTx = allTxs[allTxs.length - 1];
             const expDate = new Date(latestTx.date);
             expDate.setMonth(expDate.getMonth() + Number(prog.renewalDurationMonths || 24));
-            expirationsAtivas = [{
-               amount: balance,
-               date: expDate.toISOString().split('T')[0],
-               program: prog.name,
-               owner: prog.owner,
-               isActivityDeadline: true
-            }];
+            expirationsAtivas = [{ amount: balance, date: expDate.toISOString().split('T')[0], program: prog.name, owner: prog.owner, isActivityDeadline: true }];
           }
         } else {
           entradas.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -95,7 +87,6 @@ export function useMilesData() {
           });
         }
       }
-
       return { ...prog, balance, cpm, marketValue, profit, expirationsAtivas, allTxs, isExemptByClub };
     }).sort((a, b) => b.balance - a.balance);
   }, [programas, transacoes]);
@@ -113,8 +104,8 @@ export function useMilesData() {
     const weightedCpm = totalBalanceThousands > 0 ? (totalInvestment / totalBalanceThousands) : 0;
     const totalMarketValue = dashboardStats.reduce((acc, curr) => acc + curr.marketValue, 0);
     const globalProfit = totalMarketValue - totalInvestment;
-    
     const clubCost = dashboardStats.filter(p => p.hasClub && (!p.clubEndDate || new Date(p.clubEndDate) >= new Date())).reduce((acc, curr) => acc + Number(curr.clubCost || 0), 0);
+    
     return { totalInvestment, totalMarketValue, globalProfit, clubCost, weightedCpm };
   }, [dashboardStats]);
 
@@ -133,9 +124,10 @@ export function useMilesData() {
   }, [dashboardStats]);
 
   const deleteProgram = (id) => {
-    if (window.confirm('Excluir programa e todo o seu histórico de transações? Essa ação não pode ser desfeita.')) {
+    if (window.confirm('Excluir programa e todo o seu histórico de transações? Essa ação pode ser desfeita.')) {
       setProgramas(prev => prev.filter(p => p.id !== id));
       setTransacoes(prev => prev.filter(t => t.programId !== id));
+      showToast('Programa excluído', 'success');
       return true;
     }
     return false;
@@ -148,6 +140,7 @@ export function useMilesData() {
     }
     if (window.confirm('Excluir esta transação? O saldo do programa será recalculado.')) {
       setTransacoes(prev => prev.filter(t => t.id !== id));
+      showToast('Transação excluída', 'success');
     }
   };
 
@@ -162,6 +155,7 @@ export function useMilesData() {
     dashboardMetrics,
     vencimentosGlobais,
     deleteProgram,
-    deleteTx
+    deleteTx,
+    toast, showToast
   };
 }
