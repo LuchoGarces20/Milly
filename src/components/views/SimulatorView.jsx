@@ -1,22 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, ArrowRightLeft, TrendingUp } from 'lucide-react';
+import { Zap, ArrowRightLeft, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { formatCurrency, formatNumber } from '../../utils/helpers';
-import { CATALOGO_PROGRAMAS } from '../../constants/milesConfig';
+import { CATALOGO_PROGRAMAS, INITIAL_PROG_FORM } from '../../constants/milesConfig';
 
 export default function SimulatorView({ milesData }) {
-  const { dashboardStats } = milesData;
+  const { dashboardStats, programas, setProgramas, setTransacoes, showToast } = milesData;
+
   const [simOriginId, setSimOriginId] = useState('');
   const [simDestId, setSimDestId] = useState('');
   const [simAmount, setSimAmount] = useState('');
   const [simBonus, setSimBonus] = useState('80');
-  
-  // NOVO: Estado editável da cotação de destino
   const [destCustomCpm, setDestCustomCpm] = useState('');
 
   const originProg = dashboardStats.find(p => p.id === simOriginId);
   const destCatalog = CATALOGO_PROGRAMAS.find(p => p.id === simDestId);
 
-  // Auto-preenche a cotação se o usuário trocar o destino, mas permite edição livre
   useEffect(() => {
     if (destCatalog) {
       setDestCustomCpm(destCatalog.defaultMarketCpm.toString());
@@ -25,17 +23,92 @@ export default function SimulatorView({ milesData }) {
 
   const simAmountNum = Number(simAmount) || 0;
   const simBonusNum = Number(simBonus) || 0;
-  
   const originCpm = originProg ? originProg.cpm : 0;
   const originTotalCost = (simAmountNum / 1000) * originCpm;
-  
   const destAmountNum = simAmountNum * (1 + simBonusNum / 100);
   const destCpm = destAmountNum > 0 ? (originTotalCost / (destAmountNum / 1000)) : 0;
-  
-  // Usando a cotação editada em vez da cravada no catálogo
   const destMarketCpm = Number(destCustomCpm) || 0;
   const destMarketValue = (destAmountNum / 1000) * destMarketCpm;
   const simProfit = destMarketValue - originTotalCost;
+
+  const handleExecuteTransfer = () => {
+    if (!originProg || !destCatalog || simAmountNum <= 0) return;
+
+    if (simAmountNum > originProg.balance) {
+      if (!window.confirm(`Atenção: Você está simulando enviar ${formatNumber(simAmountNum)} pts, mas possui apenas ${formatNumber(originProg.balance)} pts na origem. Deseja efetivar mesmo assim (o saldo ficará negativo)?`)) {
+        return;
+      }
+    }
+
+    // Procura se o programa de destino já existe na carteira deste titular
+    let destProgId = '';
+    const existingProg = programas.find(p => p.name === destCatalog.name && p.owner === originProg.owner);
+    let newPrograms = [];
+
+    if (existingProg) {
+      destProgId = existingProg.id;
+    } else {
+      // Cria programa automaticamente se não existir
+      destProgId = `p_${Date.now()}_dest`;
+      const newProg = {
+        ...INITIAL_PROG_FORM,
+        id: destProgId,
+        name: destCatalog.name,
+        category: destCatalog.category,
+        renewsOnActivity: destCatalog.renewsOnActivity,
+        renewalDurationMonths: destCatalog.renewalDurationMonths || 24,
+        owner: originProg.owner,
+        marketCpm: destMarketCpm || destCatalog.defaultMarketCpm || 0
+      };
+      newPrograms = [newProg];
+    }
+
+    // Obter data atual YYYY-MM-DD com segurança de fuso horário local
+    const d = new Date();
+    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    const expDate = new Date();
+    expDate.setFullYear(expDate.getFullYear() + 2);
+    const expDateStr = `${expDate.getFullYear()}-${String(expDate.getMonth() + 1).padStart(2, '0')}-${String(expDate.getDate()).padStart(2, '0')}`;
+
+    const txSaida = {
+      id: `tx_${Date.now()}_1`,
+      programId: originProg.id,
+      owner: originProg.owner,
+      type: 'Saida',
+      amount: simAmountNum,
+      investment: 0,
+      date: todayStr,
+      isAuto: false,
+      description: `Transf. para ${destCatalog.name}`
+    };
+
+    const txEntrada = {
+      id: `tx_${Date.now()}_2`,
+      programId: destProgId,
+      owner: originProg.owner,
+      type: 'Entrada',
+      amount: destAmountNum,
+      investment: originTotalCost, // Repassa o custo efetivo contábil
+      date: todayStr,
+      expirationDate: expDateStr,
+      isAuto: false,
+      description: `Transf. de ${originProg.name} (Bônus ${simBonusNum}%)`
+    };
+
+    if (newPrograms.length > 0) {
+      setProgramas(prev => [...prev, ...newPrograms]);
+    }
+    setTransacoes(prev => [...prev, txSaida, txEntrada]);
+
+    showToast(`Transferência efetivada: +${formatNumber(destAmountNum)} pts no ${destCatalog.name}!`);
+
+    // Reseta o formulário após sucesso
+    setSimOriginId('');
+    setSimDestId('');
+    setSimAmount('');
+    setSimBonus('80');
+  };
 
   return (
     <div className="animate-in fade-in duration-500">
@@ -82,7 +155,6 @@ export default function SimulatorView({ milesData }) {
                   <input type="number" placeholder="Ex: 80" value={simBonus} onChange={e => setSimBonus(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold font-mono text-white outline-none focus:border-violet-400" />
                 </div>
                 
-                {/* NOVO CAMPO EDITÁVEL */}
                 <div className="col-span-2">
                   <label className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-2">Cotação Ref. Destino (R$)</label>
                   <input type="number" step="0.01" placeholder="Ex: 25.00" value={destCustomCpm} onChange={e => setDestCustomCpm(e.target.value)} className="w-full bg-emerald-900/20 border border-emerald-500/30 rounded-xl px-4 py-3 text-sm font-bold font-mono text-emerald-400 outline-none focus:border-emerald-400" />
@@ -104,6 +176,7 @@ export default function SimulatorView({ milesData }) {
                     <p className="text-4xl font-black font-mono text-amber-400">+{formatNumber(destAmountNum)}</p>
                     <p className="text-sm mt-2 font-bold font-mono text-white">Novo CPM: {formatCurrency(destCpm)}</p>
                   </div>
+                  
                   <div className={`md:col-span-2 p-8 rounded-3xl border flex items-center justify-between ${simProfit > 0 ? 'bg-emerald-900/20 border-emerald-500/30' : 'bg-red-900/20 border-red-500/30'}`}>
                     <div>
                       <p className={`text-sm uppercase font-bold tracking-wider mb-2 flex items-center gap-2 ${simProfit > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -116,6 +189,16 @@ export default function SimulatorView({ milesData }) {
                         {simProfit > 0 ? '+' : ''}{formatCurrency(simProfit)}
                       </p>
                     </div>
+                  </div>
+
+                  <div className="md:col-span-2 mt-2">
+                    <button
+                      onClick={handleExecuteTransfer}
+                      className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-lg rounded-3xl shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-3 group"
+                    >
+                      <CheckCircle2 className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                      Efetivar Transferência na Carteira
+                    </button>
                   </div>
                </div>
              ) : (

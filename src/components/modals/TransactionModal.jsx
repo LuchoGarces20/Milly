@@ -28,9 +28,10 @@ export default function TransactionModal({ isOpen, onClose, editingTx, preselect
           initial.programId = preselectedProgramId;
         }
       } else if (activeTab !== 'Todos') {
-        initial.owner = activeTab;
+        const activeProf = profiles.find(p => p.id === activeTab || p.name === activeTab);
+        initial.owner = activeProf ? activeProf.name : activeTab;
       } else if (profiles.length > 0) {
-        initial.owner = profiles[0];
+        initial.owner = profiles[0].name;
       }
       setFormTx(initial);
     }
@@ -53,17 +54,17 @@ export default function TransactionModal({ isOpen, onClose, editingTx, preselect
 
   const handleSaveTx = (e) => {
     e.preventDefault();
-    const payload = { 
-      ...formTx, 
-      amount: Number(formTx.amount), 
-      investment: formTx.type === 'Entrada' && formTx.investment ? Number(formTx.investment) : 0, 
+    const payload = {
+      ...formTx,
+      amount: Number(formTx.amount),
+      investment: formTx.type === 'Entrada' && formTx.investment ? Number(formTx.investment) : 0,
       expirationDate: formTx.type === 'Entrada' && !formTx.neverExpires ? formTx.expirationDate : null,
-      isAuto: false 
+      isAuto: false
     };
     delete payload.neverExpires;
 
     if (editingTx) {
-      setTransacoes(prev => prev.map(t => t.id === editingTx.id ? { ...t, ...payload } : t));
+      setTransacoes(prev => prev.map(t => (t.id === editingTx.id ? { ...t, ...payload } : t)));
     } else {
       setTransacoes([...transacoes, { ...payload, id: Date.now() }]);
     }
@@ -81,7 +82,7 @@ export default function TransactionModal({ isOpen, onClose, editingTx, preselect
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"><X className="w-5 h-5" /></button>
         </div>
-        
+
         <form onSubmit={handleSaveTx} className="p-6 space-y-5 overflow-y-auto">
           {programas.length === 0 ? (
             <div className="text-center py-8">
@@ -96,7 +97,7 @@ export default function TransactionModal({ isOpen, onClose, editingTx, preselect
                   <select required value={formTx.owner} onChange={e => setFormTx({...formTx, owner: e.target.value, programId: ''})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-violet-500 dark:text-white disabled:opacity-50" disabled={isProgramView || editingTx}>
                     <option value="" disabled>Selecione...</option>
                     {profiles.map(p => (
-                      <option key={p} value={p}>{p}</option>
+                      <option key={p.id} value={p.name}>{p.name}</option>
                     ))}
                   </select>
                 </div>
@@ -110,7 +111,6 @@ export default function TransactionModal({ isOpen, onClose, editingTx, preselect
                   </select>
                 </div>
               </div>
-
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Movimento</label>
                 <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl">
@@ -118,7 +118,6 @@ export default function TransactionModal({ isOpen, onClose, editingTx, preselect
                   <button type="button" onClick={() => setFormTx({...formTx, type: 'Saida'})} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${formTx.type === 'Saida' ? 'bg-white dark:bg-slate-600 text-red-600 dark:text-red-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>Saída</button>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Qtd. Pontos</label>
@@ -129,7 +128,6 @@ export default function TransactionModal({ isOpen, onClose, editingTx, preselect
                   <input type="number" step="0.01" min="0" placeholder="0,00" value={formTx.investment} onChange={e => setFormTx({...formTx, investment: e.target.value})} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm font-bold font-mono outline-none focus:border-violet-500 disabled:opacity-50 dark:text-white" disabled={formTx.type === 'Saida'}/>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Data Ocorrência</label>
@@ -138,25 +136,24 @@ export default function TransactionModal({ isOpen, onClose, editingTx, preselect
                 {formTx.type === 'Entrada' && (
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                       <label className="block text-xs font-bold text-amber-700 dark:text-amber-500">Expira em</label>
-                       <label className="flex items-center gap-1.5 cursor-pointer">
-                         <input type="checkbox" checked={formTx.neverExpires} onChange={e => setFormTx({...formTx, neverExpires: e.target.checked, expirationDate: ''})} className="w-3.5 h-3.5 text-amber-600 rounded border-amber-300 dark:border-amber-500/50 outline-none focus:ring-1 focus:ring-amber-500" />
-                         <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide mt-0.5">Não expira</span>
-                       </label>
+                      <label className="block text-xs font-bold text-amber-700 dark:text-amber-500">Expira em</label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" checked={formTx.neverExpires} onChange={e => setFormTx({...formTx, neverExpires: e.target.checked, expirationDate: ''})} className="w-3.5 h-3.5 text-amber-600 rounded border-amber-300 dark:border-amber-500/50 outline-none focus:ring-1 focus:ring-amber-500" />
+                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide mt-0.5">Não expira</span>
+                      </label>
                     </div>
                     {!formTx.neverExpires ? (
-                        <input type="date" required value={formTx.expirationDate} onChange={e => setFormTx({...formTx, expirationDate: e.target.value})} className="w-full bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-900 dark:text-amber-100 rounded-xl px-4 py-2.5 text-sm font-bold outline-none focus:border-amber-500" />
+                      <input type="date" required value={formTx.expirationDate} onChange={e => setFormTx({...formTx, expirationDate: e.target.value})} className="w-full bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-900 dark:text-amber-100 rounded-xl px-4 py-2.5 text-sm font-bold outline-none focus:border-amber-500" />
                     ) : (
-                        <div className="w-full h-[42px] bg-amber-50/50 dark:bg-amber-500/5 border border-dashed border-amber-200 dark:border-amber-500/30 text-amber-700/70 dark:text-amber-500/70 rounded-xl px-4 py-2 text-sm font-bold flex items-center justify-center">
-                           Vitalício
-                        </div>
+                      <div className="w-full h-[42px] bg-amber-50/50 dark:bg-amber-500/5 border border-dashed border-amber-200 dark:border-amber-500/30 text-amber-700/70 dark:text-amber-500/70 rounded-xl px-4 py-2 text-sm font-bold flex items-center justify-center">
+                        Vitalício
+                      </div>
                     )}
                   </div>
                 )}
               </div>
             </>
           )}
-
           <div className="pt-4 flex gap-3 border-t border-slate-100 dark:border-white/5 mt-4">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Cancelar</button>
             <button type="submit" disabled={programas.length === 0} className="flex-1 px-4 py-3 bg-violet-600 text-white font-bold rounded-xl shadow-sm hover:shadow-md text-sm hover:bg-violet-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">

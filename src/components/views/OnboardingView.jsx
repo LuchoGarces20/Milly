@@ -2,6 +2,11 @@ import React, { useState } from 'react';
 import { Orbit, Sun, Moon, ChevronRight, User, Users, UsersRound, Plus, X, ArrowRight, Zap, CheckCircle2 } from 'lucide-react';
 import { CATALOGO_PROGRAMAS, INITIAL_PROG_FORM } from '../../constants/milesConfig';
 
+const generateId = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `prof_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
 export default function OnboardingView({ milesData, onComplete }) {
   const { isDarkMode, setIsDarkMode, setProfiles, programas, setProgramas, transacoes, setTransacoes } = milesData;
   const [step, setStep] = useState(1);
@@ -26,7 +31,11 @@ export default function OnboardingView({ milesData, onComplete }) {
     e.preventDefault();
     const validNames = names.map(n => n.trim()).filter(n => n !== '');
     if (validNames.length > 0) {
-      setProfiles(validNames);
+      const profileObjs = validNames.map(name => ({
+        id: generateId(),
+        name
+      }));
+      setProfiles(profileObjs);
       setStep(2);
     }
   };
@@ -48,7 +57,7 @@ export default function OnboardingView({ milesData, onComplete }) {
   };
 
   const updateSetup = (id, field, value) => {
-    setInitialSetups(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
+    setInitialSetups(prev => prev.map(s => (s.id === id ? { ...s, [field]: value } : s)));
   };
 
   const submitStep2 = (e) => {
@@ -57,7 +66,7 @@ export default function OnboardingView({ milesData, onComplete }) {
       const newPrograms = [];
       const newTxs = [];
       const timestamp = Date.now();
-      
+
       initialSetups.forEach((setup, i) => {
         const progId = `p_${timestamp}_${i}`;
         newPrograms.push({
@@ -70,7 +79,7 @@ export default function OnboardingView({ milesData, onComplete }) {
           owner: setup.owner,
           marketCpm: Number(setup.marketCpm || 0)
         });
-        
+
         if (Number(setup.balance) > 0) {
           const exp = new Date();
           exp.setFullYear(exp.getFullYear() + 2);
@@ -84,7 +93,7 @@ export default function OnboardingView({ milesData, onComplete }) {
             date: new Date().toISOString().split('T')[0],
             expirationDate: exp.toISOString().split('T')[0],
             isAuto: false,
-            isSnapshot: true, // <-- FLAG ADICIONADA: Diz pro sistema que este valor é a verdade absoluta
+            isSnapshot: true,
             description: 'Saldo Inicial (Marco Zero)'
           });
         }
@@ -109,9 +118,9 @@ export default function OnboardingView({ milesData, onComplete }) {
               <Orbit className="w-10 h-10 text-white" />
             </div>
           </div>
-          
-          <h1 className="text-3xl font-extrabold text-center mb-2 tracking-tight">Bem-vindo à Milly</h1>
-          
+
+          <h1 className="text-3xl font-extrabold text-center mb-2 tracking-tight">Bem-vindo ao Milly</h1>
+
           {step === 1 && (
             <div className="animate-in slide-in-from-left-4 duration-300">
               {!mode ? (
@@ -146,7 +155,7 @@ export default function OnboardingView({ milesData, onComplete }) {
                   <p className="text-center text-slate-500 dark:text-slate-400 mb-6 font-medium">
                     {mode === 'single' ? 'Qual é o seu nome?' : 'Quem são os titulares das contas?'}
                   </p>
-                  
+
                   <div className="space-y-4 max-h-[40vh] overflow-y-auto p-1">
                     {names.map((name, index) => (
                       <div key={index} className="relative">
@@ -179,7 +188,7 @@ export default function OnboardingView({ milesData, onComplete }) {
           {step === 2 && (
             <div className="animate-in slide-in-from-right-4 duration-300">
               <p className="text-center text-slate-500 dark:text-slate-400 mb-6 font-medium">Selecione os programas que você utiliza hoje:</p>
-              
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                 {CATALOGO_PROGRAMAS.map(item => {
                   const isSelected = initialSetups.some(s => s.catalog.id === item.id);
@@ -210,14 +219,13 @@ export default function OnboardingView({ milesData, onComplete }) {
                           <Zap className="w-4 h-4 text-violet-500" /> {setup.catalog.name}
                         </span>
                         {names.length > 1 && (
-                           <select value={setup.owner} onChange={(e) => updateSetup(setup.id, 'owner', e.target.value)} className="bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-bold outline-none text-violet-700 dark:text-violet-400 focus:border-violet-500">
-                              {names.map(n => <option key={n} value={n}>{n}</option>)}
-                           </select>
+                          <select value={setup.owner} onChange={(e) => updateSetup(setup.id, 'owner', e.target.value)} className="bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-bold outline-none text-violet-700 dark:text-violet-400 focus:border-violet-500">
+                            {names.map(n => <option key={n} value={n}>{n}</option>)}
+                          </select>
                         )}
                       </div>
                       <div className="grid grid-cols-3 gap-3">
                         <div>
-                          {/* Label alterada para ficar mais clara e amigável */}
                           <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">Saldo Total Hoje</label>
                           <input type="number" placeholder="0" value={setup.balance} onChange={(e) => updateSetup(setup.id, 'balance', e.target.value)} className="w-full bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm font-mono font-bold outline-none focus:border-violet-500 dark:text-white" />
                         </div>

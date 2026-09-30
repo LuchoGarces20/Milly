@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 
-// Fallback UUID para segurança em navegadores mais antigos
-const generateId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
+const generateId = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `prof_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
 export default function ProfileModal({ isOpen, onClose, milesData }) {
   const { profiles, setProfiles, setProgramas, setTransacoes, showToast } = milesData;
@@ -10,17 +12,21 @@ export default function ProfileModal({ isOpen, onClose, milesData }) {
 
   useEffect(() => {
     if (isOpen) {
-      // Se profiles já for objeto com id, usamos ele. Se for string (legado do MVP), convertemos
-      const mapped = profiles.map(p => typeof p === 'string' ? { id: generateId(), name: p, originalName: p } : { ...p, originalName: p.name });
+      const mapped = profiles.map(p =>
+        typeof p === 'string'
+          ? { id: generateId(), name: p, originalName: p }
+          : { ...p, originalName: p.name }
+      );
       setLocalProfiles(mapped);
     }
   }, [isOpen, profiles]);
 
   const handleNameChange = (id, newName) => {
-    setLocalProfiles(prev => prev.map(p => p.id === id ? { ...p, name: newName } : p));
+    setLocalProfiles(prev => prev.map(p => (p.id === id ? { ...p, name: newName } : p)));
   };
 
-  const addProfile = () => setLocalProfiles([...localProfiles, { id: generateId(), name: '', originalName: null }]);
+  const addProfile = () =>
+    setLocalProfiles([...localProfiles, { id: generateId(), name: '', originalName: null }]);
 
   const removeProfile = (id) => {
     if (localProfiles.length > 1) setLocalProfiles(prev => prev.filter(p => p.id !== id));
@@ -30,32 +36,29 @@ export default function ProfileModal({ isOpen, onClose, milesData }) {
     e.preventDefault();
     const validProfiles = [];
     const nameChanges = {};
-    
+
     localProfiles.forEach(p => {
       const trimmed = p.name.trim();
       if (trimmed) {
-        // Fallback temporário: armazenar strings no estado global para não quebrar outras Views
-        // Mas aplicar UUID para evitar choque de nomes ao salvar
-        let finalName = trimmed;
-        if (validProfiles.includes(trimmed)) finalName = `${trimmed} (${p.id.substring(0,3)})`; // Resolve colisão
-        
-        validProfiles.push(finalName);
-        if (p.originalName && p.originalName !== finalName) nameChanges[p.originalName] = finalName;
+        validProfiles.push({ id: p.id, name: trimmed });
+        if (p.originalName && p.originalName !== trimmed) {
+          nameChanges[p.originalName] = trimmed;
+        }
       }
     });
 
     if (validProfiles.length === 0) {
-      alert("É necessário ter pelo menos um titular.");
+      alert('É necessário ter pelo menos um titular.');
       return;
     }
 
     setProfiles(validProfiles);
-    
+
     if (Object.keys(nameChanges).length > 0) {
-      setProgramas(prev => prev.map(prog => nameChanges[prog.owner] ? { ...prog, owner: nameChanges[prog.owner] } : prog));
-      setTransacoes(prev => prev.map(tx => nameChanges[tx.owner] ? { ...tx, owner: nameChanges[tx.owner] } : tx));
+      setProgramas(prev => prev.map(prog => (nameChanges[prog.owner] ? { ...prog, owner: nameChanges[prog.owner] } : prog)));
+      setTransacoes(prev => prev.map(tx => (nameChanges[tx.owner] ? { ...tx, owner: nameChanges[tx.owner] } : tx)));
     }
-    
+
     showToast('Perfis atualizados com sucesso!');
     onClose();
   };
@@ -69,7 +72,7 @@ export default function ProfileModal({ isOpen, onClose, milesData }) {
           <h3 className="font-extrabold text-slate-900 dark:text-white text-lg">Gerenciar Titulares</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
         </div>
-        
+
         <form onSubmit={handleSave} className="p-6 space-y-4">
           <div className="space-y-3 max-h-[40vh] overflow-y-auto">
             {localProfiles.map((p, idx) => (

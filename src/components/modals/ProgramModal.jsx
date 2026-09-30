@@ -5,13 +5,14 @@ import { CATEGORIAS, CATALOGO_PROGRAMAS, INITIAL_PROG_FORM } from '../../constan
 export default function ProgramModal({ isOpen, onClose, editingProg, milesData }) {
   const { profiles, programas, setProgramas, activeTab, showToast } = milesData;
   const [formProg, setFormProg] = useState(INITIAL_PROG_FORM);
-  const [modalTab, setModalTab] = useState('geral'); // NOVO: Abas de navegação (geral, clube, regras)
+  const [modalTab, setModalTab] = useState('geral');
 
   useEffect(() => {
     if (editingProg) {
       setFormProg({ ...INITIAL_PROG_FORM, ...editingProg });
     } else {
-      const defaultOwner = activeTab !== 'Todos' ? activeTab : (profiles[0] || '');
+      const activeProf = profiles.find(p => p.id === activeTab || p.name === activeTab);
+      const defaultOwner = activeProf ? activeProf.name : (profiles[0]?.name || '');
       setFormProg({ ...INITIAL_PROG_FORM, owner: defaultOwner });
     }
   }, [editingProg, activeTab, profiles]);
@@ -21,7 +22,9 @@ export default function ProgramModal({ isOpen, onClose, editingProg, milesData }
     const trimmedName = formProg.name.trim();
     if (!trimmedName) return;
 
-    const isDuplicate = programas.some(p => p.owner === formProg.owner && p.name.toLowerCase() === trimmedName.toLowerCase() && p.id !== editingProg?.id);
+    const isDuplicate = programas.some(
+      p => p.owner === formProg.owner && p.name.toLowerCase() === trimmedName.toLowerCase() && p.id !== editingProg?.id
+    );
     if (isDuplicate) {
       alert('Este titular já possui um programa cadastrado com este nome.');
       return;
@@ -40,7 +43,7 @@ export default function ProgramModal({ isOpen, onClose, editingProg, milesData }
     };
 
     if (editingProg) {
-      setProgramas(prev => prev.map(p => p.id === editingProg.id ? { ...p, ...payload } : p));
+      setProgramas(prev => prev.map(p => (p.id === editingProg.id ? { ...p, ...payload } : p)));
       showToast('Programa atualizado com sucesso!');
     } else {
       setProgramas([...programas, { ...payload, id: `p_${Date.now()}` }]);
@@ -57,22 +60,19 @@ export default function ProgramModal({ isOpen, onClose, editingProg, milesData }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
-        
         <div className="px-6 py-5 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
           <h3 className="font-extrabold text-slate-900 dark:text-white text-lg">{editingProg ? 'Editar Programa' : 'Novo Programa'}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
         </div>
-        
+
         <div className="overflow-y-auto flex-1 p-6">
-          {/* TABS MENU */}
           <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl mb-6">
-             <button onClick={() => setModalTab('geral')} type="button" className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${modalTab === 'geral' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}><BookOpen className="w-3.5 h-3.5"/> Geral</button>
-             <button onClick={() => setModalTab('clube')} type="button" className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${modalTab === 'clube' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}><Zap className="w-3.5 h-3.5"/> Clube</button>
-             <button onClick={() => setModalTab('regras')} type="button" className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${modalTab === 'regras' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}><Settings className="w-3.5 h-3.5"/> Regras</button>
+            <button onClick={() => setModalTab('geral')} type="button" className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${modalTab === 'geral' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}><BookOpen className="w-3.5 h-3.5"/> Geral</button>
+            <button onClick={() => setModalTab('clube')} type="button" className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${modalTab === 'clube' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}><Zap className="w-3.5 h-3.5"/> Clube</button>
+            <button onClick={() => setModalTab('regras')} type="button" className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${modalTab === 'regras' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}><Settings className="w-3.5 h-3.5"/> Regras</button>
           </div>
 
           <form id="progForm" onSubmit={handleSaveProgram} className="space-y-5">
-            {/* ABA: GERAL */}
             {modalTab === 'geral' && (
               <div className="space-y-4 animate-in fade-in slide-in-from-left-2">
                 {!editingProg && (
@@ -88,7 +88,10 @@ export default function ProgramModal({ isOpen, onClose, editingProg, milesData }
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Titular</label>
-                    <select required value={formProg.owner} onChange={e => setFormProg({...formProg, owner: e.target.value})} disabled={editingProg} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 rounded-xl px-4 py-2.5 text-sm dark:border-slate-700 dark:text-white"><option value="" disabled>Selecione...</option>{profiles.map(p => (<option key={p} value={p}>{p}</option>))}</select>
+                    <select required value={formProg.owner} onChange={e => setFormProg({...formProg, owner: e.target.value})} disabled={editingProg} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 rounded-xl px-4 py-2.5 text-sm dark:border-slate-700 dark:text-white">
+                      <option value="" disabled>Selecione...</option>
+                      {profiles.map(p => (<option key={p.id} value={p.name}>{p.name}</option>))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Categoria</label>
@@ -108,7 +111,6 @@ export default function ProgramModal({ isOpen, onClose, editingProg, milesData }
               </div>
             )}
 
-            {/* ABA: CLUBE */}
             {modalTab === 'clube' && (
               <div className="space-y-4 animate-in fade-in slide-in-from-right-2">
                 <label className="flex items-center gap-3 cursor-pointer bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
@@ -118,14 +120,13 @@ export default function ProgramModal({ isOpen, onClose, editingProg, milesData }
                   </div>
                   <span className="text-sm font-bold text-slate-800 dark:text-slate-200">Possui Clube Ativo?</span>
                 </label>
-                
+
                 {!formProg.hasClub && (
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-1.5">Data do Último Cancelamento (Quarentena)</label>
                     <input type="date" value={formProg.lastCancellationDate} onChange={e => setFormProg({...formProg, lastCancellationDate: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 rounded-xl px-3 py-2 text-sm dark:border-slate-700 dark:text-white" />
                   </div>
                 )}
-
                 {formProg.hasClub && (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2">
@@ -144,7 +145,6 @@ export default function ProgramModal({ isOpen, onClose, editingProg, milesData }
               </div>
             )}
 
-            {/* ABA: REGRAS AVANÇADAS */}
             {modalTab === 'regras' && (
               <div className="space-y-4 animate-in fade-in slide-in-from-right-2">
                 <label className="flex items-start gap-3 p-4 bg-violet-50 dark:bg-violet-500/10 rounded-2xl border border-violet-100 dark:border-violet-500/20">
@@ -170,7 +170,7 @@ export default function ProgramModal({ isOpen, onClose, editingProg, milesData }
             )}
           </form>
         </div>
-        
+
         <div className="p-5 border-t border-slate-100 dark:border-white/5 flex gap-3">
           <button type="button" onClick={onClose} className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-sm">Cancelar</button>
           <button type="submit" form="progForm" className="flex-1 px-4 py-3 bg-violet-600 text-white font-bold rounded-xl shadow-sm text-sm hover:bg-violet-500">{editingProg ? 'Salvar Alterações' : 'Salvar Programa'}</button>

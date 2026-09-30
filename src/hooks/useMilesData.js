@@ -2,19 +2,56 @@ import { useState, useMemo, useEffect } from 'react';
 import { formatDateBR } from '../utils/helpers';
 import { getAutoClubTxs } from '../utils/clubEngine';
 
+const generateId = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `prof_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
 export function useMilesData() {
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [profiles, setProfiles] = useState([]); // Agora suportará [{ id: 'uuid', name: 'João' }]
+
+  // 1. PERSISTÊNCIA LOCALSTORAGE
+  const [profiles, setProfiles] = useState(() => {
+    const saved = localStorage.getItem('milly_profiles');
+    if (!saved) return [];
+    try {
+      const parsed = JSON.parse(saved);
+      return parsed.map(p => (typeof p === 'string' ? { id: generateId(), name: p } : p));
+    } catch {
+      return [];
+    }
+  });
+
   const [activeTab, setActiveTab] = useState('Todos');
-  const [programas, setProgramas] = useState([]);
-  const [transacoes, setTransacoes] = useState([]);
-  
-  // NOVO: Sistema de Toasts
+
+  const [programas, setProgramas] = useState(() => {
+    const saved = localStorage.getItem('milly_programas');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [transacoes, setTransacoes] = useState(() => {
+    const saved = localStorage.getItem('milly_transacoes');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+
   const showToast = (message, type = 'success') => {
     setToast({ visible: true, message, type });
     setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 3000);
   };
+
+  useEffect(() => {
+    localStorage.setItem('milly_profiles', JSON.stringify(profiles));
+  }, [profiles]);
+
+  useEffect(() => {
+    localStorage.setItem('milly_programas', JSON.stringify(programas));
+  }, [programas]);
+
+  useEffect(() => {
+    localStorage.setItem('milly_transacoes', JSON.stringify(transacoes));
+  }, [transacoes]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -22,45 +59,55 @@ export function useMilesData() {
     else root.classList.remove('dark');
   }, [isDarkMode]);
 
+  // 2. CÁLCULO CONTÁBIL DE CPM (CUSTO MÉDIO PONDERADO)
   const statsPorPrograma = useMemo(() => {
     return programas.map(prog => {
       const manualTxs = transacoes.filter(t => t.programId === prog.id);
       const autoTxs = getAutoClubTxs(prog);
       const allTxs = [...manualTxs, ...autoTxs].sort((a, b) => new Date(a.date) - new Date(b.date));
-      
+
       let balance = 0;
-      let totalInvestment = 0;
+      let currentPoolCost = 0; // Custo do lote remanescente
       const entradas = [];
       let totalSaidas = 0;
 
       allTxs.forEach(t => {
         if (t.isSnapshot) {
           const diferenca = Number(t.amount) - balance;
-          balance = Number(t.amount); 
-          totalInvestment += Number(t.investment || 0);
           if (diferenca > 0) {
+            balance = Number(t.amount);
+            currentPoolCost += Number(t.investment || 0);
             if (t.expirationDate && !t.neverExpires) {
               entradas.push({ amount: diferenca, date: t.expirationDate });
             }
           } else if (diferenca < 0) {
-            totalSaidas += Math.abs(diferenca);
+            const saudaAmount = Math.abs(diferenca);
+            const avgCpm = balance > 0 ? currentPoolCost / (balance / 1000) : 0;
+            currentPoolCost = Math.max(0, currentPoolCost - (saudaAmount / 1000) * avgCpm);
+            balance = Number(t.amount);
+            totalSaidas += saudaAmount;
           }
         } else if (t.type === 'Entrada') {
           balance += Number(t.amount);
-          totalInvestment += Number(t.investment || 0);
+          currentPoolCost += Number(t.investment || 0);
           if (t.expirationDate && !t.neverExpires) {
             entradas.push({ amount: Number(t.amount), date: t.expirationDate });
           }
         } else {
-          balance -= Number(t.amount);
-          totalSaidas += Number(t.amount);
+          // Saída: Abate o custo médio proporcional do investimento ativo
+          const saudaAmount = Number(t.amount);
+          const avgCpm = balance > 0 ? currentPoolCost / (balance / 1000) : 0;
+          currentPoolCost = Math.max(0, currentPoolCost - (saudaAmount / 1000) * avgCpm);
+          balance = Math.max(0, balance - saudaAmount);
+          totalSaidas += saudaAmount;
         }
       });
 
-      const cpm = balance > 0 ? (totalInvestment / (balance / 1000)) : 0;
+      const cpm = balance > 0 ? currentPoolCost / (balance / 1000) : 0;
       const marketCpm = Number(prog.marketCpm || 0);
       const marketValue = (balance / 1000) * marketCpm;
-      const profit = marketValue - (cpm * (balance / 1000));
+      const profit = marketValue - currentPoolCost;
+
       let expirationsAtivas = [];
       const isExemptByClub = prog.hasClub && prog.pointsNeverExpireWithClub && (!prog.clubEndDate || new Date(prog.clubEndDate) >= new Date());
 
@@ -87,25 +134,26 @@ export function useMilesData() {
           });
         }
       }
-      return { ...prog, balance, cpm, marketValue, profit, expirationsAtivas, allTxs, isExemptByClub };
+
+      return { ...prog, balance, cpm, currentPoolCost, marketValue, profit, expirationsAtivas, allTxs, isExemptByClub };
     }).sort((a, b) => b.balance - a.balance);
   }, [programas, transacoes]);
 
   const dashboardStats = useMemo(() => {
-    return activeTab === 'Todos' ? statsPorPrograma : statsPorPrograma.filter(p => p.owner === activeTab);
-  }, [activeTab, statsPorPrograma]);
+    if (activeTab === 'Todos') return statsPorPrograma;
+    const activeProf = profiles.find(p => p.id === activeTab || p.name === activeTab);
+    const activeName = activeProf ? activeProf.name : activeTab;
+    return statsPorPrograma.filter(p => p.owner === activeName);
+  }, [activeTab, statsPorPrograma, profiles]);
 
   const dashboardMetrics = useMemo(() => {
-    const totalInvestment = dashboardStats.reduce((acc, curr) => {
-      const progInvest = curr.allTxs.reduce((sum, t) => sum + (t.type === 'Entrada' ? Number(t.investment || 0) : 0), 0);
-      return acc + progInvest;
-    }, 0);
+    const totalInvestment = dashboardStats.reduce((acc, curr) => acc + curr.currentPoolCost, 0);
     const totalBalanceThousands = dashboardStats.reduce((acc, curr) => acc + (curr.balance / 1000), 0);
-    const weightedCpm = totalBalanceThousands > 0 ? (totalInvestment / totalBalanceThousands) : 0;
+    const weightedCpm = totalBalanceThousands > 0 ? totalInvestment / totalBalanceThousands : 0;
     const totalMarketValue = dashboardStats.reduce((acc, curr) => acc + curr.marketValue, 0);
     const globalProfit = totalMarketValue - totalInvestment;
     const clubCost = dashboardStats.filter(p => p.hasClub && (!p.clubEndDate || new Date(p.clubEndDate) >= new Date())).reduce((acc, curr) => acc + Number(curr.clubCost || 0), 0);
-    
+
     return { totalInvestment, totalMarketValue, globalProfit, clubCost, weightedCpm };
   }, [dashboardStats]);
 
@@ -124,7 +172,7 @@ export function useMilesData() {
   }, [dashboardStats]);
 
   const deleteProgram = (id) => {
-    if (window.confirm('Excluir programa e todo o seu histórico de transações? Essa ação pode ser desfeita.')) {
+    if (window.confirm('Excluir programa e todo o seu histórico de transações? Essa ação não pode ser desfeita.')) {
       setProgramas(prev => prev.filter(p => p.id !== id));
       setTransacoes(prev => prev.filter(t => t.programId !== id));
       showToast('Programa excluído', 'success');
