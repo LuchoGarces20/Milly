@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
-import { getInitialTxForm } from '../../constants/milesConfig';
+import { getInitialTxForm, TAGS_TRANSACOES } from '../../constants/milesConfig';
 
 export default function TransactionModal({ isOpen, onClose, editingTx, preselectedProgramId, isProgramView, milesData }) {
   const { profiles, programas, transacoes, setTransacoes, activeTab } = milesData;
@@ -15,6 +15,7 @@ export default function TransactionModal({ isOpen, onClose, editingTx, preselect
         type: editingTx.type,
         amount: editingTx.amount,
         investment: editingTx.investment || '',
+        tag: editingTx.tag || 'Outros',
         expirationDate: editingTx.expirationDate || '',
         neverExpires: editingTx.type === 'Entrada' && !editingTx.expirationDate,
         date: editingTx.date
@@ -128,6 +129,16 @@ export default function TransactionModal({ isOpen, onClose, editingTx, preselect
                   <input type="number" step="0.01" min="0" placeholder="0,00" value={formTx.investment} onChange={e => setFormTx({...formTx, investment: e.target.value})} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm font-bold font-mono outline-none focus:border-violet-500 disabled:opacity-50 dark:text-white" disabled={formTx.type === 'Saida'}/>
                 </div>
               </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Categoria / Tag</label>
+                <select required value={formTx.tag} onChange={e => setFormTx({...formTx, tag: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-violet-500 dark:text-white">
+                  {TAGS_TRANSACOES.map(tag => (
+                    <option key={tag} value={tag}>{tag}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Data Ocorrência</label>

@@ -1,5 +1,15 @@
 export const CATEGORIAS = ['Pontos (Bancos)', 'Milhas (Aéreas)', 'Hospedagem (Hotéis)'];
 
+export const TAGS_TRANSACOES = [
+  'Transferência', 
+  'Cartão de Crédito', 
+  'Compra Bonificada', 
+  'Voo', 
+  'Clube', 
+  'Bônus', 
+  'Outros'
+];
+
 export const CATALOGO_PROGRAMAS = [
   { id: 'c1', name: 'Livelo', category: 'Pontos (Bancos)', renewsOnActivity: true, renewalDurationMonths: 24, defaultMarketCpm: 30.00, quarantineMonths: 12, familyPoolAvailable: false, tiers: ['Classic', 'Plus', 'Super', 'Mega', 'Top'] },
   { id: 'c2', name: 'Esfera', category: 'Pontos (Bancos)', renewsOnActivity: true, renewalDurationMonths: 24, defaultMarketCpm: 30.00, quarantineMonths: 12, familyPoolAvailable: false, tiers: ['Pro', 'Master', 'VIP', 'Premium', 'Exclusive'] },
@@ -41,6 +51,7 @@ export const getInitialTxForm = () => {
     type: 'Entrada',
     amount: '',
     investment: '',
+    tag: 'Outros',
     expirationDate: exp.toISOString().split('T')[0],
     neverExpires: false,
     date: today.toISOString().split('T')[0]

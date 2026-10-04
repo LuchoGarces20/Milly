@@ -179,9 +179,19 @@ export default function DashboardView({ milesData, onOpenProgModal, onOpenTxModa
           <div className="p-6 space-y-4 max-h-[600px] overflow-y-auto">
             {vencimentosGlobais.map((venc, idx) => (
               <div key={idx} className="p-5 rounded-3xl border border-slate-100 dark:border-white/10 bg-white dark:bg-white/5 shadow-sm relative overflow-hidden">
-                {venc.daysLeft <= 30 && <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500"></div>}
-                {venc.daysLeft > 30 && venc.daysLeft <= 60 && <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>}
-                <div className="flex justify-between items-start mb-4">
+                
+                {/* Gráfico Inline CSS */}
+                <div className="absolute top-0 left-0 h-1.5 transition-all duration-1000 ease-out bg-slate-200 dark:bg-slate-800 w-full">
+                  <div 
+                    className="h-full rounded-r-full" 
+                    style={{ 
+                      width: `${Math.min((venc.daysLeft / 365) * 100, 100)}%`,
+                      backgroundColor: venc.daysLeft <= 30 ? '#ef4444' : venc.daysLeft <= 60 ? '#f59e0b' : '#10b981'
+                    }}
+                  />
+                </div>
+
+                <div className="flex justify-between items-start mb-4 mt-2">
                   <div>
                     <div className="font-black text-slate-900 dark:text-white text-lg font-mono">{formatNumber(venc.amount)} <span className="text-[10px] font-sans">pts</span></div>
                     <div className="text-xs font-bold text-slate-500 mt-1">{venc.program} | {venc.owner}</div>
