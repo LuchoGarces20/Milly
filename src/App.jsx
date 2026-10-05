@@ -1,5 +1,6 @@
 import React, { useState, Suspense, lazy } from 'react';
 import { useMilesData } from './hooks/useMilesData';
+import AuthView from './components/views/AuthView';
 import Header from './components/layout/Header';
 import ProgramModal from './components/modals/ProgramModal';
 import TransactionModal from './components/modals/TransactionModal';
@@ -14,9 +15,15 @@ const SimulatorView = lazy(() => import('./components/views/SimulatorView'));
 
 export default function App() {
   const milesData = useMilesData();
-  const [currentView, setCurrentView] = useState('onboarding');
-  const [selectedProgramId, setSelectedProgramId] = useState(null);
+  const { session, userProfile } = milesData;
   
+  // Decide la vista inicial con base en los perfiles guardados
+  const [currentView, setCurrentView] = useState(() => {
+    const savedProfiles = JSON.parse(localStorage.getItem('milly_profiles') || '[]');
+    return savedProfiles.length > 0 ? 'dashboard' : 'onboarding';
+  });
+
+  const [selectedProgramId, setSelectedProgramId] = useState(null);
   const [isProgModalOpen, setIsProgModalOpen] = useState(false);
   const [editingProg, setEditingProg] = useState(null);
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
@@ -24,11 +31,24 @@ export default function App() {
   const [preselectedProgTx, setPreselectedProgTx] = useState(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
+  // Bloqueo de Autenticación: Muestra AuthView si no hay sesión
+  if (!session || !userProfile) {
+    return <AuthView onAuthComplete={(user, profile) => {
+      milesData.setUserProfile(profile); // Libera el bloqueo
+      
+      // Auto-completa el perfil si no existe localmente
+      if (milesData.profiles.length === 0) {
+        milesData.setProfiles([{ id: profile.id, name: profile.name }]);
+      }
+      setCurrentView('dashboard'); // Envía al usuario directo al dashboard
+    }} />;
+  }
+
   if (currentView === 'onboarding') {
     return <OnboardingView milesData={milesData} onComplete={() => setCurrentView('dashboard')} />;
   }
 
-  // Loader elegante enquanto os chunks são baixados
+  // Loader elegante mientras se descargan los chunks
   const SuspenseLoader = () => (
     <div className="flex justify-center items-center h-64 w-full">
       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-violet-600"></div>

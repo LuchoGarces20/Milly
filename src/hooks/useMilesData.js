@@ -1,10 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { formatDateBR } from '../utils/helpers';
 import { calculateProgramStats } from '../utils/mathEngine';
 
 const generateId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `prof_${Date.now()}`;
 
 export function useMilesData() {
+  const [session, setSession] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
   
   const [profiles, setProfiles] = useState(() => {
@@ -25,6 +28,34 @@ export function useMilesData() {
     setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 3000);
   };
 
+  // Escucha cambios de sesión de Supabase automáticamente
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) fetchUserProfile(session.user.id);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) fetchUserProfile(session.user.id);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchUserProfile = async (userId) => {
+    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    if (data) {
+      setUserProfile(data);
+    }
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setSession(null);
+    setUserProfile(null);
+  };
+
   useEffect(() => localStorage.setItem('milly_profiles', JSON.stringify(profiles)), [profiles]);
   useEffect(() => localStorage.setItem('milly_programas', JSON.stringify(programas)), [programas]);
   useEffect(() => localStorage.setItem('milly_transacoes', JSON.stringify(transacoes)), [transacoes]);
@@ -35,9 +66,8 @@ export function useMilesData() {
     else root.classList.remove('dark');
   }, [isDarkMode]);
 
-  // CÁLCULO CONTÁBIL OTIMIZADO - Mapeia 1 única vez as transações
+  // CÁLCULO CONTABLE OPTIMIZADO - Mapea las transacciones 1 sola vez
   const statsPorPrograma = useMemo(() => {
-    // Agrupa transações por programa primeiro para performance O(N)
     const txsByProg = transacoes.reduce((acc, tx) => {
       if (!acc[tx.programId]) acc[tx.programId] = [];
       acc[tx.programId].push(tx);
@@ -74,7 +104,7 @@ export function useMilesData() {
         const daysLeft = Math.ceil((dataVenc - hoje) / (1000 * 60 * 60 * 24));
         return { ...v, daysLeft, formattedDate: formatDateBR(v.date) };
       })
-      .filter(v => v.daysLeft >= 0 && v.daysLeft <= 365) // Correção: >= 0
+      .filter(v => v.daysLeft >= 0 && v.daysLeft <= 365)
       .sort((a, b) => a.daysLeft - b.daysLeft);
   }, [dashboardStats]);
 
@@ -97,6 +127,7 @@ export function useMilesData() {
   };
 
   return {
+    session, userProfile, setUserProfile, signOut,
     isDarkMode, setIsDarkMode, profiles, setProfiles, programas, setProgramas, transacoes, setTransacoes,
     activeTab, setActiveTab, statsPorPrograma, dashboardStats, dashboardMetrics, vencimentosGlobais, deleteProgram, deleteTx, toast, setToast, showToast
   };
