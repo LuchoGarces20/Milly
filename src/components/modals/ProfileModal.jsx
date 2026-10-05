@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, Copy, CheckCircle2 } from 'lucide-react';
 
 const generateId = () =>
   typeof crypto !== 'undefined' && crypto.randomUUID
@@ -7,8 +7,9 @@ const generateId = () =>
     : `prof_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
 export default function ProfileModal({ isOpen, onClose, milesData }) {
-  const { profiles, setProfiles, setProgramas, setTransacoes, showToast } = milesData;
+  const { profiles, setProfiles, setProgramas, setTransacoes, showToast, userProfile } = milesData;
   const [localProfiles, setLocalProfiles] = useState([]);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -30,6 +31,15 @@ export default function ProfileModal({ isOpen, onClose, milesData }) {
 
   const removeProfile = (id) => {
     if (localProfiles.length > 1) setLocalProfiles(prev => prev.filter(p => p.id !== id));
+  };
+
+  const handleCopyCode = () => {
+    if (userProfile?.families?.invite_code) {
+      navigator.clipboard.writeText(userProfile.families.invite_code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      showToast('Código copiado com sucesso!');
+    }
   };
 
   const handleSave = (e) => {
@@ -73,6 +83,24 @@ export default function ProfileModal({ isOpen, onClose, milesData }) {
           <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
         </div>
 
+        {/* CARTÃO DO CÓDIGO DE CONVITE */}
+        {userProfile?.families?.invite_code && (
+          <div className="mx-6 mt-6 p-4 bg-violet-50 dark:bg-violet-500/10 border border-violet-100 dark:border-violet-500/20 rounded-2xl flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wide mb-1">Código de Convite ({userProfile.families.name})</p>
+              <p className="text-xl font-black text-violet-900 dark:text-violet-100 tracking-widest uppercase">{userProfile.families.invite_code}</p>
+            </div>
+            <button 
+              type="button" 
+              onClick={handleCopyCode} 
+              title="Copiar código"
+              className="p-3 bg-white dark:bg-[#0B0F19] text-violet-600 dark:text-violet-400 rounded-xl shadow-sm hover:scale-105 transition-all"
+            >
+              {copied ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5" />}
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSave} className="p-6 space-y-4">
           <div className="space-y-3 max-h-[40vh] overflow-y-auto">
             {localProfiles.map((p, idx) => (
@@ -85,11 +113,11 @@ export default function ProfileModal({ isOpen, onClose, milesData }) {
             ))}
           </div>
           <button type="button" onClick={addProfile} className="w-full py-2.5 flex items-center justify-center gap-2 text-sm font-bold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10 rounded-xl transition-colors border border-dashed border-violet-200 dark:border-violet-500/30">
-            <Plus className="w-4 h-4" /> Adicionar Titular
+            <Plus className="w-4 h-4" /> Adicionar Titular Manual
           </button>
           <div className="pt-2 flex gap-3">
-            <button type="button" onClick={onClose} className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-sm">Cancelar</button>
-            <button type="submit" className="flex-1 px-4 py-3 bg-violet-600 text-white font-bold rounded-xl shadow-sm hover:bg-violet-500">Salvar</button>
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Cancelar</button>
+            <button type="submit" className="flex-1 px-4 py-3 bg-violet-600 text-white font-bold rounded-xl shadow-sm hover:bg-violet-500 transition-colors">Salvar</button>
           </div>
         </form>
       </div>

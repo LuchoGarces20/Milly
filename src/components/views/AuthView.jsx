@@ -28,7 +28,7 @@ export default function AuthView({ onAuthComplete }) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         
-        // Verifica se o usuário já tem um perfil configurado
+        // Verifica se o utilizador já tem um perfil configurado
         const { data: { user } } = await supabase.auth.getUser();
         const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
         
@@ -76,7 +76,7 @@ export default function AuthView({ onAuthComplete }) {
         finalFamilyId = existingFamily.id;
       }
 
-      // Cria ou atualiza o perfil do usuário
+      // Cria ou atualiza o perfil do utilizador
       const profileData = { id: user.id, name: name, family_id: finalFamilyId };
       const { data: profile, error: profError } = await supabase
         .from('profiles')
@@ -117,18 +117,38 @@ export default function AuthView({ onAuthComplete }) {
             </h1>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">Email</label>
+              <label htmlFor="email" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">Email</label>
               <div className="relative">
-                <Mail className="w-5 h-5 absolute left-4 top-3.5 text-slate-400" />
-                <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-2xl pl-12 pr-5 py-3.5 outline-none focus:border-violet-500 dark:text-white font-medium transition-all" placeholder="seu@email.com" />
+                <Mail className="w-5 h-5 absolute left-4 top-3.5 text-slate-400 pointer-events-none" />
+                <input 
+                  id="email"
+                  name="email"
+                  autoComplete="email"
+                  required 
+                  type="email" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  className="w-full bg-slate-50 text-slate-900 dark:bg-[#0B0F19] dark:text-white border border-slate-200 dark:border-white/10 rounded-2xl pl-12 pr-5 py-3.5 outline-none focus:border-violet-500 font-medium transition-all" 
+                  placeholder="seu@email.com" 
+                />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">Senha</label>
+              <label htmlFor="password" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">Senha</label>
               <div className="relative">
-                <Lock className="w-5 h-5 absolute left-4 top-3.5 text-slate-400" />
-                <input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-2xl pl-12 pr-5 py-3.5 outline-none focus:border-violet-500 dark:text-white font-medium transition-all" placeholder="••••••••" />
+                <Lock className="w-5 h-5 absolute left-4 top-3.5 text-slate-400 pointer-events-none" />
+                <input 
+                  id="password"
+                  name="password"
+                  autoComplete={isLogin ? "current-password" : "new-password"}
+                  required 
+                  type="password" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  className="w-full bg-slate-50 text-slate-900 dark:bg-[#0B0F19] dark:text-white border border-slate-200 dark:border-white/10 rounded-2xl pl-12 pr-5 py-3.5 outline-none focus:border-violet-500 font-medium transition-all" 
+                  placeholder="••••••••" 
+                />
               </div>
             </div>
 
@@ -153,8 +173,18 @@ export default function AuthView({ onAuthComplete }) {
             {!setupMode ? (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">Como podemos te chamar?</label>
-                  <input required type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-3.5 outline-none focus:border-violet-500 dark:text-white font-medium mb-4" placeholder="Seu nome ou apelido" />
+                  <label htmlFor="name" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">Como podemos te chamar?</label>
+                  <input 
+                    id="name"
+                    name="name"
+                    autoComplete="name"
+                    required 
+                    type="text" 
+                    value={name} 
+                    onChange={(e) => setName(e.target.value)} 
+                    className="w-full bg-slate-50 text-slate-900 dark:bg-[#0B0F19] dark:text-white border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-3.5 outline-none focus:border-violet-500 font-medium mb-4" 
+                    placeholder="Seu nome ou apelido" 
+                  />
                 </div>
                 
                 <button onClick={() => name.trim() && setSetupMode('create')} className={`w-full flex items-center gap-4 p-5 rounded-3xl border border-slate-200 dark:border-white/10 transition-all group text-left ${name.trim() ? 'hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-500/10 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
@@ -176,15 +206,33 @@ export default function AuthView({ onAuthComplete }) {
               <form onSubmit={handleFamilySetup} className="space-y-4 animate-in slide-in-from-right-4">
                 {setupMode === 'create' ? (
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">Nome do Grupo/Família</label>
-                    <input required type="text" value={familyName} onChange={(e) => setFamilyName(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-3.5 outline-none focus:border-violet-500 dark:text-white font-medium" placeholder="Ex: Família Silva ou Minhas Milhas" />
+                    <label htmlFor="familyName" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">Nome do Grupo/Família</label>
+                    <input 
+                      id="familyName"
+                      name="familyName"
+                      required 
+                      type="text" 
+                      value={familyName} 
+                      onChange={(e) => setFamilyName(e.target.value)} 
+                      className="w-full bg-slate-50 text-slate-900 dark:bg-[#0B0F19] dark:text-white border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-3.5 outline-none focus:border-violet-500 font-medium" 
+                      placeholder="Ex: Família Silva ou Minhas Milhas" 
+                    />
                   </div>
                 ) : (
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">Código de Convite</label>
+                    <label htmlFor="inviteCode" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">Código de Convite</label>
                     <div className="relative">
-                      <Key className="w-5 h-5 absolute left-4 top-3.5 text-slate-400" />
-                      <input required type="text" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-2xl pl-12 pr-5 py-3.5 outline-none focus:border-violet-500 dark:text-white font-medium uppercase" placeholder="EX: A1B2C3" />
+                      <Key className="w-5 h-5 absolute left-4 top-3.5 text-slate-400 pointer-events-none" />
+                      <input 
+                        id="inviteCode"
+                        name="inviteCode"
+                        required 
+                        type="text" 
+                        value={inviteCode} 
+                        onChange={(e) => setInviteCode(e.target.value)} 
+                        className="w-full bg-slate-50 text-slate-900 dark:bg-[#0B0F19] dark:text-white border border-slate-200 dark:border-white/10 rounded-2xl pl-12 pr-5 py-3.5 outline-none focus:border-violet-500 font-medium uppercase" 
+                        placeholder="EX: A1B2C3" 
+                      />
                     </div>
                   </div>
                 )}

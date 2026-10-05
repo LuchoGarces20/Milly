@@ -44,7 +44,13 @@ export function useMilesData() {
   }, []);
 
   const fetchUserProfile = async (userId) => {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    // Atualizamos a query para fazer "join" com a tabela de famílias e trazer o invite_code
+    const { data } = await supabase
+      .from('profiles')
+      .select('*, families(name, invite_code)')
+      .eq('id', userId)
+      .single();
+      
     if (data) {
       setUserProfile(data);
     }
